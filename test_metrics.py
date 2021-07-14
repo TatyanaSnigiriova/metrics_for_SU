@@ -54,19 +54,40 @@ def get_metrics_values_for_image_shifts(
 
 
 def plot_for_metrics_shifts_values(metrics_shifts_values, shift_name, save_to_dir=None, show=True):
-    fig, ax = plt.subplots()  # Create a figure and an axes.
-    fig.set_size_inches(15, 15)
-    ax.set_xlabel(f'{shift_name.title()} shift')
-    ax.set_ylabel('Value of te metric')
-    ax.set_title(f"Сhanges in the values of metrics by {shift_name}")
-    ax.legend()  # Add a legend.
+    if "PSNR" in metrics_shifts_values.keys():
+        fig1, ax1 = plt.subplots()  # Create a figure and an axes.
+        fig1.set_size_inches(15, 15)
+        ax1.set_xlabel(f'{shift_name.title()} shift')
+        ax1.set_ylabel('Value of te metric')
+        ax1.set_title(f"Сhanges in the values of metrics by {shift_name}")
+        ax1.legend()  # Add a legend.
+        shifts, values = zip(*sorted(metrics_shifts_values["PSNR"].items()))
+        ax1.plot(shifts, values, 'o-', label="PSNR")
+        max_val = max(*[value for value in values if value != np.inf])
+        ax1.plot((0, 0), (0, max_val), linestyle="--", label="Max values")
+        ax1.legend()
+        plt.grid()
+        if show:
+            plt.show()
+        if save_to_dir:
+            plt.savefig(join(save_to_dir, shift_name + "_" + "PSNR" + ".png"), dpi=100)
+        metrics_shifts_values.pop("PSNR")
+
+    fig2, ax2 = plt.subplots()  # Create a figure and an axes.
+    fig2.set_size_inches(15, 15)
+    ax2.set_xlabel(f'{shift_name.title()} shift')
+    ax2.set_ylabel('Value of te metric')
+    ax2.set_title(f"Сhanges in the values of metrics by {shift_name}")
+    ax2.legend()  # Add a legend.
     max_val = 0
     for metric in metrics_shifts_values:
         shifts, values = zip(*sorted(metrics_shifts_values[metric].items()))
-        ax.plot(shifts, values, 'o-', label=metric)
+        ax2.plot(shifts, values, 'o-', label=metric)
         max_val = max(max([value for value in values if value != np.inf]), max_val)
-    ax.plot((0, 0), (0, max_val), linestyle="--", label="Max values")
-    ax.legend()
+    ax2.plot((0, 0), (0, max_val), linestyle="--", label="Max values")
+    ax2.set_yticks(np.arange(0, max_val, 0.1))
+    ax2.legend()
+    plt.grid()
     if show:
         plt.show()
     if save_to_dir:
