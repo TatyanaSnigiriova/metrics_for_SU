@@ -13,4 +13,5 @@ calculate_metrics.py - Реализует подсчет следующих ме
 
 ## Настройка окружения: 
 https://drive.google.com/file/d/1cARntiW1oEgR_ZU0ltBj-ekWnN0BS2SL/view?usp=sharing
-* Используются TF v.1
+* Файлы test_metrics.py, calculate_metrics.py используют TF v.1
+* generate_datasets_for_testing_metrics.py, plot_hist.py - opencv

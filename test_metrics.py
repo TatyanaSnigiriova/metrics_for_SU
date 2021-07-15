@@ -1,6 +1,6 @@
 from calculate_metrics import *
-from os import listdir, makedirs
-from os.path import isfile, join, exists
+from os import listdir
+from os.path import join
 from matplotlib import pyplot as plt
 import numpy as np
 import csv
@@ -119,11 +119,11 @@ def main():
     # The image for which the test data sets were generated
     main_image_name = "HR.png"
 
-    gen_images_dir_path = join(images_dir_path, "compare")
+    gen_images_dir_path = join(images_dir_path, "compare_1")
 
     metrics = ["MSE", "MAE", "MII", "PSNR", "NCC", "SSIM"]
     sess = tf.InteractiveSession()
-
+    '''
     # brightness
     brightness_images_dir_path = join(gen_images_dir_path, "brightness")
     metrics_brightness_values = get_metrics_values_for_image_shifts(
@@ -142,7 +142,8 @@ def main():
         show=False
     )
     csv_writer_for_metrics_shifts_values(metrics_brightness_values, join(logs_dir_path, "brightness.csv"))
-
+    '''
+    '''
     # contrast
     contrast_images_dir_path = join(gen_images_dir_path, "contrast")
     metrics_contrast_values = get_metrics_values_for_image_shifts(
@@ -161,7 +162,25 @@ def main():
         show=False
     )
     csv_writer_for_metrics_shifts_values(metrics_contrast_values, join(logs_dir_path, "contrast.csv"))
-
+    '''
+    # gamma contrast
+    gamma_contrast_images_dir_path = join(gen_images_dir_path, "gamma_contrast")
+    metrics_gamma_contrast_values = get_metrics_values_for_image_shifts(
+        images_dir_path, main_image_name,
+        gamma_contrast_images_dir_path,
+        get_contrast,
+        1.,  # gamma = 1.
+        metrics,
+        sess,
+    )
+    plot_for_metrics_shifts_values(
+        metrics_gamma_contrast_values,
+        shift_name="gamma contrast",
+        zero_shift=1.,
+        save_to_dir=plots_dir_path,
+        show=False
+    )
+    csv_writer_for_metrics_shifts_values(metrics_gamma_contrast_values, join(logs_dir_path, "gamma_contrast.csv"))
 
 if __name__ == '__main__':
     # Code to be run only when run directly
