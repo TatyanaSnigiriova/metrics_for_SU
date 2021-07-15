@@ -44,14 +44,22 @@ def NCC(image1_np, image2_np):
           )
     '''
     # or
-    ncc = np.mean(
+    denominator = (np.std(image1_np) * np.std(image2_np))
+    numerator = np.mean(
         np.multiply(
             image1_np - np.mean(image1_np),
             image2_np - np.mean(image2_np)
         )
-    ) / (np.std(image1_np) * np.std(image2_np))
-
-    return ncc
+    )
+    if denominator < 1e-5:
+        if numerator < 0:
+            return - np.inf
+        elif numerator == 0:
+            return 1
+        else:
+            return + np.inf
+    else:
+        return numerator / denominator
 
 
 def calculate_metrics_for_image(

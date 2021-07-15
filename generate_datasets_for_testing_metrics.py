@@ -27,38 +27,12 @@ new_image = np.zeros(image.shape, image.dtype)
 # alpha - Simple contrast control
 # beta - Simple brightness control
 # Do the operation new_image(i,j) = alpha*image(i,j) + beta
-image_plus_1_5_contrast = cv.convertScaleAbs(image, alpha=1.5, beta=0)
-image_plus_2_contrast = cv.convertScaleAbs(image, alpha=2., beta=0)
-image_plus_2_5_contrast = cv.convertScaleAbs(image, alpha=2.5, beta=0)
-image_plus_3_contrast = cv.convertScaleAbs(image, alpha=3, beta=0)
-image_minus_0_5_contrast = cv.convertScaleAbs(image, alpha=0.5, beta=0)
-image_minus_1_contrast = cv.convertScaleAbs(image, alpha=0., beta=0)
-image_minus_1_5_contrast = cv.convertScaleAbs(image, alpha=-0.5, beta=0)
-image_minus_2_contrast = cv.convertScaleAbs(image, alpha=-1, beta=0)
+for alpha in np.arange(0., 5.1, 0.2):
+    alpha = round(alpha, 2)
+    image_shift_contrast = cv.convertScaleAbs(image, alpha=alpha, beta=0)
+    cv.imwrite(join(contrast_images_dir_path, str(alpha) + image_format), image_shift_contrast)
 
-image_plus_25_brightness = cv.convertScaleAbs(image, alpha=1., beta=25)
-image_plus_50_brightness = cv.convertScaleAbs(image, alpha=1., beta=50)
-image_plus_75_brightness = cv.convertScaleAbs(image, alpha=1., beta=75)
-image_plus_100_brightness = cv.convertScaleAbs(image, alpha=1., beta=100)
-image_minus_25_brightness = cv.convertScaleAbs(image, alpha=1., beta=-25)
-image_minus_50_brightness = cv.convertScaleAbs(image, alpha=1., beta=-50)
-image_minus_75_brightness = cv.convertScaleAbs(image, alpha=1., beta=-75)
-image_minus_100_brightness = cv.convertScaleAbs(image, alpha=1., beta=-100)
-
-cv.imwrite(join(contrast_images_dir_path, "+1.5" + image_format), image_plus_1_5_contrast)
-cv.imwrite(join(contrast_images_dir_path, "+2" + image_format), image_plus_2_contrast)
-cv.imwrite(join(contrast_images_dir_path, "+2.5" + image_format), image_plus_2_5_contrast)
-cv.imwrite(join(contrast_images_dir_path, "+3" + image_format), image_plus_3_contrast)
-cv.imwrite(join(contrast_images_dir_path, "-0.5" + image_format), image_minus_0_5_contrast)
-cv.imwrite(join(contrast_images_dir_path, "-1" + image_format), image_minus_1_contrast)
-cv.imwrite(join(contrast_images_dir_path, "-1.5" + image_format), image_minus_1_5_contrast)
-cv.imwrite(join(contrast_images_dir_path, "-2" + image_format), image_minus_2_contrast)
-
-cv.imwrite(join(brightness_images_dir_path, "+25" + image_format), image_plus_25_brightness)
-cv.imwrite(join(brightness_images_dir_path, "+50" + image_format), image_plus_50_brightness)
-cv.imwrite(join(brightness_images_dir_path, "+75" + image_format), image_plus_75_brightness)
-cv.imwrite(join(brightness_images_dir_path, "+100" + image_format), image_plus_100_brightness)
-cv.imwrite(join(brightness_images_dir_path, "-25" + image_format), image_minus_25_brightness)
-cv.imwrite(join(brightness_images_dir_path, "-50" + image_format), image_minus_50_brightness)
-cv.imwrite(join(brightness_images_dir_path, "-75" + image_format), image_minus_75_brightness)
-cv.imwrite(join(brightness_images_dir_path, "-100" + image_format), image_minus_100_brightness)
+for beta in np.arange(-510, 511, 15):
+    image_shift_brightness = cv.convertScaleAbs(image, alpha=1., beta=beta)
+    if any(image_shift_brightness[image_shift_brightness != 255]):
+        cv.imwrite(join(brightness_images_dir_path, str(beta) + image_format), image_shift_brightness)
