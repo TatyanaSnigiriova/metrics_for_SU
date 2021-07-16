@@ -7,14 +7,14 @@ from os.path import join, exists
 # Source: https://docs.opencv.org/3.4/d3/dc1/tutorial_basic_linear_transform.html
 # Read image given by user
 images_dir_path = join(".", "test_metrics")
-main_image_path = join(images_dir_path, "HR.png")
+main_image_path = join(images_dir_path, "0002.png")
 image_format = main_image_path[main_image_path.rfind('.'):]
 main_image = cv.imread(main_image_path)
 if main_image is None:
     print('Could not open or find the image: ', main_image_path)
     exit(0)
 
-gen_images_dir_path = join(images_dir_path, "compare_2")
+gen_images_dir_path = join(images_dir_path, "compare_M1_2")
 if not exists(gen_images_dir_path):
     makedirs(gen_images_dir_path)
 
