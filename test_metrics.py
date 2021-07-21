@@ -6,11 +6,11 @@ import numpy as np
 import csv
 
 
-def get_brightness(file_name):
+def get_int_value_from_file_name(file_name):
     return int(file_name[:file_name.rfind(".")])
 
 
-def get_contrast(file_name):
+def get_float_from_file_name(file_name):
     return float(file_name[:file_name.rfind(".")])
 
 
@@ -94,7 +94,7 @@ def plot_for_metrics_shifts_values(
     fig2.set_size_inches(15, 15)
     ax2.set_xlabel(f'{shift_name.title()} shift', fontsize=20)
     ax2.set_ylabel('Value of te metric', fontsize=20)
-    ax2.set_title(f"Сhanges in the values of metrics by {shift_name}",fontsize=30)
+    ax2.set_title(f"Сhanges in the values of metrics by {shift_name}", fontsize=30)
     max_val = -np.inf
     min_val = np.inf
     for metric in metrics_shifts_values_:
@@ -169,7 +169,7 @@ def calculate_mean_shift_response_for_metrics(metrics_shifts_values, zero_shift,
 
 def main():
     images_dir_path = join(".", "test_metrics")
-    dataset_name = "M1"
+    dataset_name = "M2"
     dir_num = 1
     pattern = f"{dataset_name}_{dir_num}"
     logs_dir_path = join(".", "logs")
@@ -184,123 +184,206 @@ def main():
 
     # brightness
     zero_betta = 0
-
-    brightness_logs_dir_path = join(logs_dir_path, "brightness")
+    brightness_dirs_name = "brightness"
+    brightness_logs_dir_path = join(logs_dir_path, brightness_dirs_name)
     if not exists(brightness_logs_dir_path):
         makedirs(brightness_logs_dir_path)
-
     brightness_log_path = join(brightness_logs_dir_path, log_name)
     if not exists(brightness_log_path):
         print("Calculate, plot and write metrics values for brightness shift")
-        brightness_images_dir_path = join(gen_images_dir_path, "brightness")
-        metrics_brightness_values = get_metrics_values_for_image_shifts(
+        brightness_images_dir_path = join(gen_images_dir_path, brightness_dirs_name)
+        brightness_metrics_values = get_metrics_values_for_image_shifts(
             images_dir_path, main_image_name,
             brightness_images_dir_path,
-            get_brightness,
+            get_int_value_from_file_name,
             zero_betta,  # betta = 0
             metrics,
             sess,
         )
-        brightness_plots_dir_path = join(plots_dir_path, "brightness")
+        brightness_plots_dir_path = join(plots_dir_path, brightness_dirs_name)
         if not exists(brightness_plots_dir_path):
             makedirs(brightness_plots_dir_path)
         plot_for_metrics_shifts_values(
-            metrics_brightness_values,
+            brightness_metrics_values,
             shift_name="brightness",
             zero_shift=zero_betta,
             save_to_dir=brightness_plots_dir_path,
             dataset_full_name=pattern,
             show=False
         )
-        csv_writer_for_metrics_shifts_values(metrics_brightness_values, brightness_log_path)
+        csv_writer_for_metrics_shifts_values(brightness_metrics_values, brightness_log_path)
     else:
-        metrics_brightness_values = csv_reader_for_metrics_shifts_values(brightness_log_path, int)
+        brightness_metrics_values = csv_reader_for_metrics_shifts_values(brightness_log_path, int)
     mean_metrics_responses_to_brightness = calculate_mean_shift_response_for_metrics(
-        metrics_brightness_values,
+        brightness_metrics_values,
         zero_betta,
         round_num=4
     )
     print("Mean metrics responses to brightness:")
     print(mean_metrics_responses_to_brightness)
 
-    # contrast
+    # alpha contrast
     zero_alpha = 1.
-    contrast_logs_dir_path = join(logs_dir_path, "contrast")
-    if not exists(contrast_logs_dir_path):
-        makedirs(contrast_logs_dir_path)
-    contrast_log_path = join(contrast_logs_dir_path, log_name)
-    if not exists(contrast_log_path):
+    alpha_contrast_dirs_name = "alpha_contrast"
+    alpha_contrast_logs_dir_path = join(logs_dir_path, alpha_contrast_dirs_name)
+    if not exists(alpha_contrast_logs_dir_path):
+        makedirs(alpha_contrast_logs_dir_path)
+    alpha_contrast_log_path = join(alpha_contrast_logs_dir_path, log_name)
+    if not exists(alpha_contrast_log_path):
         print("Calculate, plot and write metrics values for contrast shift")
-        contrast_images_dir_path = join(gen_images_dir_path, "contrast")
-        metrics_contrast_values = get_metrics_values_for_image_shifts(
+        alpha_contrast_images_dir_path = join(gen_images_dir_path, alpha_contrast_dirs_name)
+        alpha_contrast_metrics_values = get_metrics_values_for_image_shifts(
             images_dir_path, main_image_name,
-            contrast_images_dir_path,
-            get_contrast,
+            alpha_contrast_images_dir_path,
+            get_float_from_file_name,
             zero_alpha,  # alpha = 1.
             metrics,
             sess,
         )
-        contrast_plots_dir_path = join(plots_dir_path, "contrast")
-        if not exists(contrast_plots_dir_path):
-            makedirs(contrast_plots_dir_path)
+        alpha_contrast_plots_dir_path = join(plots_dir_path, alpha_contrast_dirs_name)
+        if not exists(alpha_contrast_plots_dir_path):
+            makedirs(alpha_contrast_plots_dir_path)
         plot_for_metrics_shifts_values(
-            metrics_contrast_values,
+            alpha_contrast_metrics_values,
             shift_name="contrast",
             zero_shift=zero_alpha,
-            save_to_dir=contrast_plots_dir_path,
+            save_to_dir=alpha_contrast_plots_dir_path,
             dataset_full_name=pattern,
             show=False
         )
-        csv_writer_for_metrics_shifts_values(metrics_contrast_values, contrast_log_path)
+        csv_writer_for_metrics_shifts_values(alpha_contrast_metrics_values, alpha_contrast_log_path)
     else:
-        metrics_contrast_values = csv_reader_for_metrics_shifts_values(contrast_log_path, float)
-    mean_metrics_responses_to_contrast = calculate_mean_shift_response_for_metrics(
-        metrics_contrast_values,
+        alpha_contrast_metrics_values = csv_reader_for_metrics_shifts_values(alpha_contrast_log_path, float)
+    mean_metrics_responses_to_alpha_contrast = calculate_mean_shift_response_for_metrics(
+        alpha_contrast_metrics_values,
         zero_alpha,
         round_num=4
     )
-    print("Mean metrics responses to contrast:")
-    print(mean_metrics_responses_to_contrast)
+    print("Mean metrics responses to alpha-contrast:")
+    print(mean_metrics_responses_to_alpha_contrast)
 
     # gamma contrast
     zero_gamma = 1.
-    gamma_contrast_logs_dir_path = join(logs_dir_path, "gamma_contrast")
+    gamma_contrast_dirs_name = "gamma_contrast"
+    gamma_contrast_logs_dir_path = join(logs_dir_path, gamma_contrast_dirs_name)
     if not exists(gamma_contrast_logs_dir_path):
         makedirs(gamma_contrast_logs_dir_path)
     gamma_contrast_log_path = join(gamma_contrast_logs_dir_path, pattern)
     if not exists(gamma_contrast_log_path):
         print("Calculate, plot and write metrics values for gamma-contrast shift")
-        gamma_contrast_images_dir_path = join(gen_images_dir_path, "gamma_contrast")
-        metrics_gamma_contrast_values = get_metrics_values_for_image_shifts(
+        gamma_contrast_images_dir_path = join(gen_images_dir_path, gamma_contrast_dirs_name)
+        gamma_contrast_metrics_values = get_metrics_values_for_image_shifts(
             images_dir_path, main_image_name,
             gamma_contrast_images_dir_path,
-            get_contrast,
+            get_float_from_file_name,
             zero_gamma,  # gamma = 1.
             metrics,
             sess,
         )
-        gamma_contrast_plots_dir_path = join(plots_dir_path, "gamma_contrast")
+        gamma_contrast_plots_dir_path = join(plots_dir_path, gamma_contrast_dirs_name)
         if not exists(gamma_contrast_plots_dir_path):
             makedirs(gamma_contrast_plots_dir_path)
 
         plot_for_metrics_shifts_values(
-            metrics_gamma_contrast_values,
+            gamma_contrast_metrics_values,
             shift_name="gamma contrast",
             zero_shift=zero_gamma,
             save_to_dir=gamma_contrast_plots_dir_path,
             dataset_full_name=pattern,
             show=False
         )
-        csv_writer_for_metrics_shifts_values(metrics_gamma_contrast_values, gamma_contrast_log_path)
+        csv_writer_for_metrics_shifts_values(gamma_contrast_metrics_values, gamma_contrast_log_path)
     else:
-        metrics_gamma_contrast_values = csv_reader_for_metrics_shifts_values(gamma_contrast_log_path, float)
+        gamma_contrast_metrics_values = csv_reader_for_metrics_shifts_values(gamma_contrast_log_path, float)
     mean_metrics_responses_to_gamma_contrast = calculate_mean_shift_response_for_metrics(
-        metrics_gamma_contrast_values,
+        gamma_contrast_metrics_values,
         zero_gamma,
         round_num=4
     )
     print("Mean metrics responses to gamma contrast:")
     print(mean_metrics_responses_to_gamma_contrast)
+
+    # shuffle
+    zero_shuffle = 0
+    shuffle_dirs_name = "shuffle"
+    shuffle_logs_dir_path = join(logs_dir_path, shuffle_dirs_name)
+    if not exists(shuffle_logs_dir_path):
+        makedirs(shuffle_logs_dir_path)
+    shuffle_log_path = join(shuffle_logs_dir_path, pattern)
+    if not exists(shuffle_log_path):
+        print("Calculate, plot and write metrics values for pixel-shuffled images")
+        shuffle_images_dir_path = join(gen_images_dir_path, shuffle_dirs_name)
+        shuffle_metrics_values = get_metrics_values_for_image_shifts(
+            images_dir_path, main_image_name,
+            shuffle_images_dir_path,
+            get_int_value_from_file_name,
+            zero_shuffle,  # gamma = 1.
+            metrics,
+            sess,
+        )
+        shuffle_plots_dir_path = join(plots_dir_path, shuffle_dirs_name)
+        if not exists(shuffle_plots_dir_path):
+            makedirs(shuffle_plots_dir_path)
+
+        plot_for_metrics_shifts_values(
+            shuffle_metrics_values,
+            shift_name="shuffle",
+            zero_shift=zero_shuffle,
+            save_to_dir=shuffle_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
+        csv_writer_for_metrics_shifts_values(shuffle_metrics_values, shuffle_log_path)
+    else:
+        shuffle_metrics_values = csv_reader_for_metrics_shifts_values(shuffle_log_path, float)
+    mean_metrics_responses_to_shuffle = calculate_mean_shift_response_for_metrics(
+        shuffle_metrics_values,
+        zero_shuffle,
+        round_num=4
+    )
+    print("Mean metrics responses to pixel-shuffle:")
+    print(mean_metrics_responses_to_shuffle)
+
+    # gaussian blur
+    zero_blur = 0
+    gaussian_blur_dirs_name = "gaussian_blur"
+    gaussian_blur_logs_dir_path = join(logs_dir_path, gaussian_blur_dirs_name)
+    if not exists(gaussian_blur_logs_dir_path):
+        makedirs(gaussian_blur_logs_dir_path)
+    gaussian_blur_log_path = join(gaussian_blur_logs_dir_path, pattern)
+    if not exists(gaussian_blur_log_path):
+        print("Calculate, plot and write metrics values for gaussian blurry images")
+        gaussian_blurry_images_dir_path = join(gen_images_dir_path, gaussian_blur_dirs_name)
+        gaussian_blur_metrics_values = get_metrics_values_for_image_shifts(
+            images_dir_path, main_image_name,
+            gaussian_blurry_images_dir_path,
+            get_int_value_from_file_name,
+            zero_blur,  # gamma = 1.
+            metrics,
+            sess,
+        )
+        gaussian_blur_plots_dir_path = join(plots_dir_path, gaussian_blur_dirs_name)
+        if not exists(gaussian_blur_plots_dir_path):
+            makedirs(gaussian_blur_plots_dir_path)
+
+        plot_for_metrics_shifts_values(
+            gaussian_blur_metrics_values,
+            shift_name="gaussian blur",
+            zero_shift=zero_blur,
+            save_to_dir=gaussian_blur_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
+        csv_writer_for_metrics_shifts_values(gaussian_blur_metrics_values, gaussian_blur_log_path)
+    else:
+        gaussian_blur_metrics_values = csv_reader_for_metrics_shifts_values(gaussian_blur_log_path, float)
+    mean_metrics_responses_to_gaussian_blur = calculate_mean_shift_response_for_metrics(
+        gaussian_blur_metrics_values,
+        zero_blur,
+        round_num=4
+    )
+    print("Mean metrics responses to gaussian_blur:")
+    print(mean_metrics_responses_to_gaussian_blur)
 
 
 if __name__ == '__main__':
