@@ -5,6 +5,19 @@ from matplotlib import pyplot as plt
 import numpy as np
 import csv
 
+diap_metrics = {
+    "MSE": {"max": 0, "min": 1},
+    "MAE": {"max": 0, "min": 1},
+    "MI": {"max": np.inf, "min": 0},
+    "NMI": {"max": 1, "min": 0},
+    "NCC": {"max": 1, "min": -1},
+    "Nx2CC": {"max": 1, "min": 0},
+    "SSIM": {"max": 1, "min": -1},
+    "NSSIM": {"max": 1, "min": 0},
+}
+
+not_normalized_metrics = ["PSNR", "MI", "NCC", "SSIM"]
+minimized_metrics = ["MAE", "MSE"]
 
 def get_int_value_from_file_name(file_name):
     return int(file_name[:file_name.rfind(".")])
@@ -34,7 +47,7 @@ def get_metrics_values_for_image_shifts(
         metrics_shifts_values[metric] = dict.fromkeys(shifts)
 
     for shifted_file_name in shifted_files_names:
-        metrics_values = calculate_metrics_for_image(
+        metrics_values = calculate_metrics_for_grayscale_image(
             main_image_dir_path, main_image_name,
             shifted_images_dir_path, shifted_file_name,
             sess=sess,
@@ -47,12 +60,12 @@ def get_metrics_values_for_image_shifts(
 
     if zero_shift not in shifts:
         # Compare main image with the same image
-        metrics_values = calculate_metrics_for_image(
+        metrics_values = calculate_metrics_for_grayscale_image(
             main_image_dir_path, main_image_name,
             main_image_dir_path, main_image_name,
             sess=sess,
-            calculation_in_uint8=False,
-            log=False
+            calculation_in_uint8=calculation_in_uint8,
+            log=log
         )
         for metric in metrics_values.keys():
             metrics_shifts_values[metric][zero_shift] = metrics_values[metric]
@@ -67,16 +80,17 @@ def plot_for_metrics_shifts_values(
         save_to_dir=None,
         dataset_full_name="",
         show=True,
-        separate_plot_for_metric=["PSNR", "MII"]
 ):
+    global not_normalized_metrics, minimized_metrics
+
     metrics_shifts_values_ = metrics_shifts_values.copy()
-    for metric in separate_plot_for_metric:
+    for metric in not_normalized_metrics:
         if metric in metrics_shifts_values_.keys():
             fig1, ax1 = plt.subplots()  # Create a figure and an axes.
             fig1.set_size_inches(15, 15)
             ax1.set_xlabel(f'{shift_name.title()} shift', fontsize=20)
-            ax1.set_ylabel('Value of the metric', fontsize=20)
-            ax1.set_title(f"Changes in the values of metrics by {shift_name}", fontsize=30)
+            ax1.set_ylabel('The metric values', fontsize=20)
+            ax1.set_title(f"The response of metrics to the {shift_name} shift", fontsize=30)
             shifts, values = zip(*sorted(metrics_shifts_values_[metric].items()))
             ax1.plot(shifts, values, 'o-', label=metric)
             max_val = max(*[value for value in values if value != np.inf])
@@ -93,23 +107,24 @@ def plot_for_metrics_shifts_values(
     fig2, ax2 = plt.subplots()  # Create a figure and an axes.
     fig2.set_size_inches(15, 15)
     ax2.set_xlabel(f'{shift_name.title()} shift', fontsize=20)
-    ax2.set_ylabel('Value of te metric', fontsize=20)
-    ax2.set_title(f"Сhanges in the values of metrics by {shift_name}", fontsize=30)
-    max_val = -np.inf
-    min_val = np.inf
-    for metric in metrics_shifts_values_:
+    ax2.set_ylabel('The metric values', fontsize=20)
+    ax2.set_title(f"The response of metrics to the {shift_name} shift", fontsize=30)
+    for metric in metrics_shifts_values_.keys():
         shifts, values = zip(*sorted(metrics_shifts_values_[metric].items()))
+        if metric not in minimized_metrics:
+            values = 1 - np.array(values)
+            metric = "1 - " + metric
         ax2.plot(shifts, values, 'o-', label=metric)
-        max_val = max(*[value for value in values if value != np.inf], max_val)
-        min_val = min(*values, min_val)
-    ax2.plot((zero_shift, zero_shift), (min_val, max_val), linestyle="--", label="Max values")
-    ax2.set_yticks(np.arange(round(min_val, 1), max_val, 0.1))
+        max_val = max(*values, max_val)
+    ax2.plot((zero_shift, zero_shift), (0, 1), linestyle="--", label="Max values")
+    ax2.set_ylim((-0.1, 1.1))
+    ax2.set_yticks(np.arange(0, 1.01, 0.05))
     ax2.legend(fontsize=20)
     plt.grid()
     if show:
         plt.show()
     if save_to_dir:
-        plt.savefig(join(save_to_dir, dataset_full_name + ".png"), dpi=100)
+        plt.savefig(join(save_to_dir, f"{dataset_full_name}.png"), dpi=100)
 
 
 def csv_writer_for_metrics_shifts_values(metrics_shifts_values, output_csv_path):
@@ -142,44 +157,103 @@ def csv_reader_for_metrics_shifts_values(input_csv_name, func_to_get_shift):
 
 
 def calculate_mean_shift_response_for_metrics(metrics_shifts_values, zero_shift, round_num=np.inf):
-    mean_metrics_responses = dict()
-    for metric in metrics_shifts_values.keys():
-        metric_zero_shift_value = metrics_shifts_values[metric][zero_shift]
-        mean_metric_response_left = []
-        mean_metric_response_right = []
+    metrics_responses = dict()
+    global not_normalized_metrics, minimized_metrics
 
-        for shift in metrics_shifts_values[metric].keys():
-            if shift == zero_shift:
-                continue
-            if shift < zero_shift:
-                mean_metric_response_left.append(
-                    (metrics_shifts_values[metric][shift] - metric_zero_shift_value) / abs(shift - zero_shift))
+    for metric in metrics_shifts_values.keys():
+        if metric == "PSNR":
+            continue
+        if metric == "MI":
+            diap_metrics[metric]["max"] = max(metrics_shifts_values[metric].values())
+        metric_shifts_values = metrics_shifts_values[metric]
+        metric_response_left = []
+        metric_response_right = []
+        shifts_list = sorted(metric_shifts_values.keys())
+        zero_shift_i = shifts_list.index(zero_shift)
+
+        if zero_shift_i != 0:
+            if metric in minimized_metrics:
+                left_max_S = (diap_metrics[metric]["min"] - diap_metrics[metric]["max"])/2
+                left_max_S += (diap_metrics[metric]["min"] - diap_metrics[metric]["max"]) * (zero_shift_i - 1)
             else:
-                mean_metric_response_right.append(
-                    (metrics_shifts_values[metric][shift] - metric_zero_shift_value) / abs(shift - zero_shift))
-        mean_metrics_responses[metric] = dict()
-        if round_num == np.inf:
-            mean_metrics_responses[metric]["-"] = np.mean(mean_metric_response_left)
-            mean_metrics_responses[metric]["+"] = np.mean(mean_metric_response_right)
+                left_max_S = (diap_metrics[metric]["max"] - diap_metrics[metric]["min"]) * zero_shift_i\
+                             - (diap_metrics[metric]["max"] - diap_metrics[metric]["min"])/2
         else:
-            mean_metrics_responses[metric]["-"] = round(np.mean(mean_metric_response_left), round_num)
-            mean_metrics_responses[metric]["+"] = round(np.mean(mean_metric_response_right), round_num)
-    return mean_metrics_responses
+            left_max_S = 0
+
+        if len(shifts_list) - zero_shift_i != 1:
+            if metric in minimized_metrics:
+                right_max_S = (diap_metrics[metric]["min"] - diap_metrics[metric]["max"]) / 2
+                right_max_S += (diap_metrics[metric]["min"] - diap_metrics[metric]["max"]) * (len(shifts_list) - zero_shift_i - 2)
+            else:
+                right_max_S = (diap_metrics[metric]["max"] - diap_metrics[metric]["min"]) * (len(shifts_list) - zero_shift_i - 1) \
+                             - (diap_metrics[metric]["max"] - diap_metrics[metric]["min"]) / 2
+        else:
+            right_max_S = 0
+
+        for i in range(len(shifts_list) - 1):
+            if i < zero_shift_i:
+                if minimized_metrics:
+                    metric_response_left.append(
+                        (
+                            metrics_shifts_values[metric][shifts_list[i]] +
+                            metrics_shifts_values[metric][shifts_list[i + 1]] -
+                            2 * diap_metrics[metric]["max"]
+                        ) / 2
+                    )
+                else:
+                    metric_response_left.append(
+                        (
+                                2 * diap_metrics[metric]["max"] -
+                                metrics_shifts_values[metric][shifts_list[i]] -
+                                metrics_shifts_values[metric][shifts_list[i + 1]]
+
+                        ) / 2
+                    )
+            else:
+                if minimized_metrics:
+                    metric_response_right.append(
+                        (
+                                metrics_shifts_values[metric][shifts_list[i]] +
+                                metrics_shifts_values[metric][shifts_list[i + 1]] -
+                                2 * diap_metrics[metric]["max"]
+                        ) / 2
+                    )
+                else:
+                    metric_response_right.append(
+                        (
+                                2 * diap_metrics[metric]["max"] -
+                                metrics_shifts_values[metric][shifts_list[i]] -
+                                metrics_shifts_values[metric][shifts_list[i + 1]]
+
+                        ) / 2
+                    )
+        metrics_responses[metric] = dict()
+        if round_num == np.inf:
+            metrics_responses[metric]["-"] = np.sum(metric_response_left) / left_max_S
+            metrics_responses[metric]["+"] = np.sum(metric_response_right) / right_max_S
+        else:
+            metrics_responses[metric]["-"] = round(np.sum(metric_response_left) / left_max_S, round_num)
+            metrics_responses[metric]["+"] = round(np.sum(metric_response_right) / right_max_S, round_num)
+    return metrics_responses
 
 
 def main():
     images_dir_path = join(".", "test_metrics")
-    dataset_name = "M2"
+    dataset_name = "DR-2D"
     dir_num = 1
     pattern = f"{dataset_name}_{dir_num}"
     logs_dir_path = join(".", "logs")
     log_name = f"{pattern}.csv"
     plots_dir_path = join(".", "plots")
+    replot = False
+    calculation_in_uint8 = True
+    log = False
 
     # The image for which the test data sets were generated
     main_image_name = f"{dataset_name}.png"
     gen_images_dir_path = join(images_dir_path, f"compare_{pattern}")
-    metrics = ["MSE", "MAE", "MII", "PSNR", "NCC", "SSIM"]
+    metrics = ["MSE", "MAE", "MI", "NMI", "PSNR", "NCC", "Nx2CC", "SSIM", "NSSIM"]
     sess = tf.InteractiveSession()
 
     # brightness
@@ -199,6 +273,8 @@ def main():
             zero_betta,  # betta = 0
             metrics,
             sess,
+            calculation_in_uint8,
+            log
         )
         brightness_plots_dir_path = join(plots_dir_path, brightness_dirs_name)
         if not exists(brightness_plots_dir_path):
@@ -214,10 +290,21 @@ def main():
         csv_writer_for_metrics_shifts_values(brightness_metrics_values, brightness_log_path)
     else:
         brightness_metrics_values = csv_reader_for_metrics_shifts_values(brightness_log_path, int)
+
+    if replot:
+        brightness_plots_dir_path = join(plots_dir_path, brightness_dirs_name)
+        plot_for_metrics_shifts_values(
+            brightness_metrics_values,
+            shift_name="brightness",
+            zero_shift=zero_betta,
+            save_to_dir=brightness_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
     mean_metrics_responses_to_brightness = calculate_mean_shift_response_for_metrics(
         brightness_metrics_values,
         zero_betta,
-        round_num=4
+        round_num=4,
     )
     print("Mean metrics responses to brightness:")
     print(mean_metrics_responses_to_brightness)
@@ -239,6 +326,8 @@ def main():
             zero_alpha,  # alpha = 1.
             metrics,
             sess,
+            calculation_in_uint8,
+            log
         )
         alpha_contrast_plots_dir_path = join(plots_dir_path, alpha_contrast_dirs_name)
         if not exists(alpha_contrast_plots_dir_path):
@@ -254,10 +343,21 @@ def main():
         csv_writer_for_metrics_shifts_values(alpha_contrast_metrics_values, alpha_contrast_log_path)
     else:
         alpha_contrast_metrics_values = csv_reader_for_metrics_shifts_values(alpha_contrast_log_path, float)
+
+    if replot:
+        alpha_contrast_plots_dir_path = join(plots_dir_path, alpha_contrast_dirs_name)
+        plot_for_metrics_shifts_values(
+            alpha_contrast_metrics_values,
+            shift_name="contrast",
+            zero_shift=zero_alpha,
+            save_to_dir=alpha_contrast_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
     mean_metrics_responses_to_alpha_contrast = calculate_mean_shift_response_for_metrics(
         alpha_contrast_metrics_values,
         zero_alpha,
-        round_num=4
+        round_num=4,
     )
     print("Mean metrics responses to alpha-contrast:")
     print(mean_metrics_responses_to_alpha_contrast)
@@ -279,6 +379,8 @@ def main():
             zero_gamma,  # gamma = 1.
             metrics,
             sess,
+            calculation_in_uint8,
+            log
         )
         gamma_contrast_plots_dir_path = join(plots_dir_path, gamma_contrast_dirs_name)
         if not exists(gamma_contrast_plots_dir_path):
@@ -295,10 +397,21 @@ def main():
         csv_writer_for_metrics_shifts_values(gamma_contrast_metrics_values, gamma_contrast_log_path)
     else:
         gamma_contrast_metrics_values = csv_reader_for_metrics_shifts_values(gamma_contrast_log_path, float)
+
+    if replot:
+        gamma_contrast_plots_dir_path = join(plots_dir_path, gamma_contrast_dirs_name)
+        plot_for_metrics_shifts_values(
+            gamma_contrast_metrics_values,
+            shift_name="gamma contrast",
+            zero_shift=zero_gamma,
+            save_to_dir=gamma_contrast_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
     mean_metrics_responses_to_gamma_contrast = calculate_mean_shift_response_for_metrics(
         gamma_contrast_metrics_values,
         zero_gamma,
-        round_num=4
+        round_num=4,
     )
     print("Mean metrics responses to gamma contrast:")
     print(mean_metrics_responses_to_gamma_contrast)
@@ -320,6 +433,8 @@ def main():
             zero_shuffle,  # gamma = 1.
             metrics,
             sess,
+            calculation_in_uint8,
+            log
         )
         shuffle_plots_dir_path = join(plots_dir_path, shuffle_dirs_name)
         if not exists(shuffle_plots_dir_path):
@@ -336,10 +451,21 @@ def main():
         csv_writer_for_metrics_shifts_values(shuffle_metrics_values, shuffle_log_path)
     else:
         shuffle_metrics_values = csv_reader_for_metrics_shifts_values(shuffle_log_path, float)
+
+    if replot:
+        shuffle_plots_dir_path = join(plots_dir_path, shuffle_dirs_name)
+        plot_for_metrics_shifts_values(
+            shuffle_metrics_values,
+            shift_name="shuffle",
+            zero_shift=zero_shuffle,
+            save_to_dir=shuffle_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
     mean_metrics_responses_to_shuffle = calculate_mean_shift_response_for_metrics(
         shuffle_metrics_values,
         zero_shuffle,
-        round_num=4
+        round_num=4,
     )
     print("Mean metrics responses to pixel-shuffle:")
     print(mean_metrics_responses_to_shuffle)
@@ -361,6 +487,8 @@ def main():
             zero_blur,  # gamma = 1.
             metrics,
             sess,
+            calculation_in_uint8,
+            log
         )
         gaussian_blur_plots_dir_path = join(plots_dir_path, gaussian_blur_dirs_name)
         if not exists(gaussian_blur_plots_dir_path):
@@ -377,10 +505,21 @@ def main():
         csv_writer_for_metrics_shifts_values(gaussian_blur_metrics_values, gaussian_blur_log_path)
     else:
         gaussian_blur_metrics_values = csv_reader_for_metrics_shifts_values(gaussian_blur_log_path, float)
+
+    if replot:
+        gaussian_blur_plots_dir_path = join(plots_dir_path, gaussian_blur_dirs_name)
+        plot_for_metrics_shifts_values(
+            gaussian_blur_metrics_values,
+            shift_name="gaussian blur",
+            zero_shift=zero_blur,
+            save_to_dir=gaussian_blur_plots_dir_path,
+            dataset_full_name=pattern,
+            show=False
+        )
     mean_metrics_responses_to_gaussian_blur = calculate_mean_shift_response_for_metrics(
         gaussian_blur_metrics_values,
         zero_blur,
-        round_num=4
+        round_num=4,
     )
     print("Mean metrics responses to gaussian_blur:")
     print(mean_metrics_responses_to_gaussian_blur)

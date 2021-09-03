@@ -36,7 +36,6 @@ def plot_hists_for_three_shifts(
     axes[1].plot((128, 128), (0, max_count), linestyle="--")
     axes[1].set_title(zero_shift_hist_title)
 
-
     axes[2].hist(plus_shift_bins[:-1], plus_shift_bins, weights=plus_shift_counts)
     axes[2].plot((128, 128), (0, max_count), linestyle="--")
     axes[2].set_title(plus_shift_hist_title)
@@ -68,7 +67,7 @@ def generate_datasets_linearly(
     main_image_name = f"{dataset_name}.{images_format}"
     main_image_path = join(images_dir_path, main_image_name)
 
-    main_image = cv.imread(main_image_path)
+    main_image = cv.imread(main_image_path, flags=cv.IMREAD_GRAYSCALE)
     if main_image is None:
         print(
             f"Could not open or find the main image {main_image_path} for which the test datasets should be generated!"
@@ -115,7 +114,6 @@ def generate_datasets_linearly(
             )
         print(f"LOG: Alpha-contrast dataset {alpha_contrast_images_dir_path} were generated!")
 
-
     if beta_brightness:
         brightness_images_dir_path = join(gen_images_dir_path, "brightness")
         if not exists(brightness_images_dir_path):
@@ -157,18 +155,21 @@ def shuffle_matrix_np(matrix_np, shuffled_images_dir_path, images_format, shuffl
     for j in range(matrix_np.shape[0]):
         for i in range(matrix_np.shape[1]):
             matrix_indexes_list.append((j, i))
-
+    random_seed = 0
     for shuffled_parts_num in range(0, shuffled_parts_max_num + 1):
+        np.random.seed(random_seed)
+        random_seed += 7
         pixels_to_shuffle_count = matrix_np.shape[0] * matrix_np.shape[1] * shuffled_parts_num // shuffled_parts_max_num
         # list_indexes must be 1-dimensional for np.random.choice
         positions_to_get_in_matrix_indexes_list = np.random.choice(
-            len(matrix_indexes_list), size=(pixels_to_shuffle_count // 2, 2), replace=False
+            len(matrix_indexes_list), size=(pixels_to_shuffle_count // 2, 2), replace=False,
         )
         for pos1, pos2 in positions_to_get_in_matrix_indexes_list:
             j1, i1 = matrix_indexes_list[pos1]
             j2, i2 = matrix_indexes_list[pos2]
 
-            (shuffled_image_np[j1][i1], shuffled_image_np[j2][i2]) = (shuffled_image_np[j2][i2], shuffled_image_np[j1][i1])
+            (shuffled_image_np[j1][i1], shuffled_image_np[j2][i2]) = (
+            shuffled_image_np[j2][i2], shuffled_image_np[j1][i1])
 
         counts, bins = np.histogram(shuffled_image_np, bins=range(0, 256, 1))
         cv.imwrite(join(shuffled_images_dir_path, str(shuffled_parts_num) + "." + images_format), shuffled_image_np)
@@ -199,7 +200,7 @@ def generate_datasets_nonlinear(
     main_image_name = f"{dataset_name}.{images_format}"
     main_image_path = join(images_dir_path, main_image_name)
 
-    main_image = cv.imread(main_image_path)
+    main_image = cv.imread(main_image_path, flags=cv.IMREAD_GRAYSCALE)
     if main_image is None:
         print(
             f"Could not open or find the main image {main_image_path} for which the test datasets should be generated!"
@@ -261,11 +262,10 @@ def generate_datasets_nonlinear(
                 "Histogram of the original image",
                 "Histogram of a half-mixed image",
                 "Histogram of a completely mixed image",
-                save=join(shuffle_hists_dir_path,  f"{dataset_name}.png"),
+                save=join(shuffle_hists_dir_path, f"{dataset_name}.png"),
                 set_extreme_values_to_zero=False
             )
         print(f"LOG: Pixel-shuffled dataset {shuffled_images_dir_path} were generated!")
-
 
     if gaussian_blur:
         gaussian_blurry_images_dir_path = join(gen_images_dir_path, "gaussian_blur")
@@ -309,7 +309,7 @@ def generate_datasets_nonlinear(
 
 def main():
     images_dir_path = join(".", "test_metrics")
-    dataset_name = "DR-2D"
+    dataset_name = "M1_3um_resized_to_1.2um"
     images_format = "png"
     extended_dataset = False
 
